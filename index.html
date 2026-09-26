@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operasi Kantin Sihat - BM Tahun 4</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        html, body { 
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden !important; /* Memastikan tiada scrollbar langsung */
+            font-family: 'Nunito', sans-serif; 
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #d97706 100%);
+            user-select: none;
+        }
+        .font-game { font-family: 'Fredoka One', cursive; }
+        .spin-wheel { transition: transform 3s cubic-bezier(0.15, 0.9, 0.15, 1); }
+        .btn-game { 
+            box-shadow: 0 4px 0 rgba(0,0,0,0.25); 
+            transition: all 0.1s ease-in-out; 
+        }
+        .btn-game:active { 
+            transform: translateY(3px); 
+            box-shadow: 0 1px 0 rgba(0,0,0,0.25); 
+        }
+        .bg-pop {
+            background-color: #2563eb;
+            background-image: radial-gradient(#60a5fa 3px, transparent 3px);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="bg-pop flex items-center justify-center p-2 sm:p-3">
+
+    <!-- AUDIO ELEMENTS -->
+    <audio id="sfx-cheer" src="cheer.mp3"></audio>
+    <audio id="sfx-wheel" src="wheel_spin.mp3"></audio>
+    <audio id="misi1-audio" src=""></audio>
+    <audio id="misi3-audio" src=""></audio>
+
+    <!-- BINGKAI UTAMA LANDSCAPE (FIT 100% SCREEN TANPA SCROLL) -->
+    <div class="w-full h-full max-w-[1280px] max-h-[720px] bg-amber-400 rounded-3xl border-8 border-yellow-300 shadow-2xl flex flex-col justify-between overflow-hidden p-2 sm:p-3 relative">
+        
+        <!-- HEADER GAME -->
+        <header class="bg-gradient-to-r from-red-500 via-amber-500 to-emerald-500 p-2 rounded-2xl border-4 border-white shadow-md flex justify-between items-center text-white shrink-0">
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl sm:text-3xl filter drop-shadow">🏫</span>
+                <div>
+                    <h1 class="font-game text-base sm:text-xl text-yellow-200 tracking-wide drop-shadow-[0_2px_0_rgba(0,0,0,0.4)]">OPERASI KANTIN SIHAT</h1>
+                    <p class="text-[9px] sm:text-xs text-white font-black opacity-90">BM Tahun 4 • Kemahiran Mendengar & Bertutur</p>
+                </div>
+            </div>
+            <div class="w-36 sm:w-48 bg-blue-950/80 p-1.5 rounded-xl border-2 border-yellow-300 shadow-inner">
+                <div class="flex justify-between text-[10px] font-black text-yellow-300 mb-0.5">
+                    <span>METER SIHAT</span>
+                    <span id="meter-text">0%</span>
+                </div>
+                <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-yellow-200">
+                    <div id="meter-bar" class="bg-gradient-to-r from-green-400 to-emerald-300 h-full w-0 transition-all duration-500"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- PAPARAN KANDUNGAN UTAMA (LANDSCAPE OPTIMIZED) -->
+        <main id="app-content" class="flex-1 my-2 bg-gradient-to-b from-sky-400 to-blue-600 rounded-2xl border-4 border-white p-2 sm:p-3 flex flex-col items-center justify-center relative overflow-hidden shadow-inner">
+            <!-- Kandungan interaktif dimuatkan oleh JavaScript -->
+        </main>
+
+        <!-- FOOTER GAME -->
+        <footer class="bg-amber-300 p-1.5 rounded-2xl border-4 border-white flex justify-between items-center shrink-0">
+            <button onclick="showMenu()" class="bg-red-500 hover:bg-red-600 text-white font-game py-1 px-3 rounded-xl text-xs sm:text-sm btn-game border-2 border-white">
+                🏠 Menu Utama
+            </button>
+            <div class="text-[11px] text-blue-950 font-black tracking-wide hidden sm:block">
+                Mod Pembelajaran Interaktif Tahun 4
+            </div>
+            <button onclick="alert('Selesaikan tugasan dan bertutur secara lisan bersama rakan kelas anda!')" class="bg-blue-600 hover:bg-blue-700 text-white font-game py-1 px-3 rounded-xl text-xs sm:text-sm btn-game border-2 border-white">
+                💡 Panduan
+            </button>
+        </footer>
+    </div>
+
+    <script>
+        let state = { progress: 0, m1Completed: false, m2Completed: false, m3Completed: false, m2Found: [] };
+
+        function updateProgress(val) {
+            state.progress = val;
+            document.getElementById('meter-bar').style.width = val + '%';
+            document.getElementById('meter-text').innerText = val + '%';
+        }
+
+        function playSfx(id) {
+            const el = document.getElementById(id);
+            if(el) { el.currentTime = 0; el.play().catch(()=>{}); }
+        }
+
+        // ==========================================
+        // GAMBAR 1: MENU UTAMA (BANER GAME)
+        // ==========================================
+        function showMenu() {
+            const main = document.getElementById('app-content');
+            main.innerHTML = `
+                <div class="w-full h-full flex flex-col justify-between items-center space-y-2">
+                    <!-- RUANG BANNER GAME (GAMBAR 1) -->
+                    <div class="w-full h-28 sm:h-36 bg-amber-200 rounded-xl border-4 border-white shadow-md overflow-hidden relative">
+                        <img src="banner.png" alt="Banner Game" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/800x200/f59e0b/ffffff?text=OPERASI+KANTIN+SIHAT'">
+                    </div>
+
+                    <div class="bg-yellow-300 border-2 border-white text-blue-950 px-4 py-1 rounded-full text-xs font-black shadow">
+                        👋 Selamat Datang Ejen! Pilih Misi Untuk Bermula:
+                    </div>
+
+                    <!-- BUTANG 3 MISI UTAMA -->
+                    <div class="grid grid-cols-3 gap-3 w-full flex-1">
+                        <button onclick="startMisi1()" class="bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl border-4 border-white p-2 flex flex-col items-center justify-center btn-game shadow-md">
+                            <span class="text-2xl sm:text-3xl">🎧</span>
+                            <span class="font-game text-xs sm:text-base text-yellow-200">MISI 1</span>
+                            <span class="text-[10px] font-black opacity-90">Suara Misteri</span>
+                            <span class="mt-1 text-[9px] bg-black/30 px-2 py-0.5 rounded-full">${state.m1Completed ? '✓ SELESAI' : 'TERBUKA'}</span>
+                        </button>
+
+                        <button onclick="${state.m1Completed ? 'startMisi2()' : 'alert(\'Selesaikan Misi 1 dahulu!\')'}" class="${state.m1Completed ? 'bg-blue-500 hover:bg-blue-400' : 'bg-slate-500 opacity-70'} text-white rounded-2xl border-4 border-white p-2 flex flex-col items-center justify-center btn-game shadow-md">
+                            <span class="text-2xl sm:text-3xl">🔍</span>
+                            <span class="font-game text-xs sm:text-base text-yellow-200">MISI 2</span>
+                            <span class="text-[10px] font-black opacity-90">Detektif Kantin</span>
+                            <span class="mt-1 text-[9px] bg-black/30 px-2 py-0.5 rounded-full">${state.m2Completed ? '✓ SELESAI' : '🔒 KUNCI'}</span>
+                        </button>
+
+                        <button onclick="${state.m2Completed ? 'startMisi3()' : 'alert(\'Selesaikan Misi 2 dahulu!\')'}" class="${state.m2Completed ? 'bg-purple-600 hover:bg-purple-500' : 'bg-slate-500 opacity-70'} text-white rounded-2xl border-4 border-white p-2 flex flex-col items-center justify-center btn-game shadow-md">
+                            <span class="text-2xl sm:text-3xl">🎡</span>
+                            <span class="font-game text-xs sm:text-base text-yellow-200">MISI 3</span>
+                            <span class="text-[10px] font-black opacity-90">Roda Cabaran</span>
+                            <span class="mt-1 text-[9px] bg-black/30 px-2 py-0.5 rounded-full">${state.m3Completed ? '✓ SELESAI' : '🔒 KUNCI'}</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // GAMBAR 2: MISI 1 (AUDIO & SOALAN)
+        // ==========================================
+        const m1Data = [
+            { img: "soalan1.png", audio: "audio1.mp3", options: [
+                { text: "Biarkan sahaja. Nanti ada orang bersihkan.", correct: false },
+                { text: "Mari kita kutip sampah dan buang ke dalam tong.", correct: true },
+                { text: "Bukan kita yang kotorkan.", correct: false }
+            ]}
+        ];
+
+        function startMisi1() {
+            const item = m1Data[0];
+            const main = document.getElementById('app-content');
+            main.innerHTML = `
+                <div class="w-full h-full flex flex-col justify-between items-center">
+                    <span class="bg-yellow-400 text-blue-950 px-3 py-0.5 rounded-full text-xs font-black border-2 border-white">MISI 1: SUARA MISTERI</span>
+
+                    <div class="grid grid-cols-12 gap-3 w-full flex-1 items-center my-1">
+                        <!-- GAMBAR & BUTANG AUDIO -->
+                        <div class="col-span-5 bg-indigo-800/80 p-2 rounded-2xl border-4 border-white flex flex-col items-center justify-center h-full">
+                            <div class="w-24 h-24 sm:w-28 sm:h-28 bg-white rounded-xl overflow-hidden border-2 border-yellow-300 mb-2">
+                                <img src="${item.img}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150/3b82f6/ffffff?text=Gambar+Soalan'">
+                            </div>
+                            <button onclick="playMisi1Audio('${item.audio}')" class="bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-game px-3 py-1.5 rounded-xl text-xs btn-game border-2 border-white flex items-center space-x-1">
+                                <span>🔊</span> <span>DENGAR AUDIO</span>
+                            </button>
+                        </div>
+
+                        <!-- PILIHAN JAWAPAN -->
+                        <div class="col-span-7 flex flex-col justify-center space-y-2 h-full">
+                            ${item.options.map((opt, i) => `
+                                <button onclick="checkM1(${opt.correct})" class="w-full bg-white hover:bg-yellow-100 text-blue-950 font-black p-2 rounded-xl border-2 border-blue-400 text-left text-xs sm:text-sm shadow flex items-center space-x-2 transition">
+                                    <span class="bg-blue-600 text-white w-6 h-6 rounded-lg flex items-center justify-center font-game text-xs shrink-0">${String.fromCharCode(65+i)}</span>
+                                    <span>${opt.text}</span>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function playMisi1Audio(src) {
+            const a = document.getElementById('misi1-audio');
+            a.src = src;
+            a.play().catch(()=> alert("Sila pastikan fail " + src + " dimasukkan."));
+        }
+
+        function checkM1(isCorrect) {
+            if(isCorrect) {
+                state.m1Completed = true;
+                updateProgress(33);
+                showMisi1Selesai();
+            } else {
+                alert("Jawapan kurang tepat. Sila cuba lagi!");
+            }
+        }
+
+        // ==========================================
+        // GAMBAR 3: MISI 1 SELESAI (SOUND CHEER)
+        // ==========================================
+        function showMisi1Selesai() {
+            playSfx('sfx-cheer');
+            confetti({ particleCount: 120, spread: 80 });
+            const main = document.getElementById('app-content');
+            main.innerHTML = `
+                <div class="w-full h-full flex flex-col items-center justify-center space-y-2 text-center">
+                    <div class="w-24 h-24 rounded-full overflow-hidden border-4 border-yellow-300 shadow-xl bg-white">
+                        <img src="misi1_selesai.png" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150/10b981/ffffff?text=Misi+1+Selesai'">
+                    </div>
+                    <h2 class="font-game text-xl sm:text-2xl text-yellow-300 drop-shadow">TAHNIAH! MISI 1 SELESAI!</h2>
+                    <div class="bg-white/90 border-2 border-emerald-400 p-1 px-4 rounded-xl text-xs font-black text-emerald-900">
+                        Situasi Selesai: 5 / 5 | Bintang: ⭐⭐⭐⭐⭐
+                    </div>
+                    <button onclick="startMisi2()" class="bg-emerald-500 hover:bg-emerald-400 text-white font-game py-2 px-6 rounded-xl text-xs sm:text-sm btn-game border-2 border-white">
+                        TERUSKAN KE MISI 2 ➔
+                    </button>
+                </div>
+            `;
+        }
+
+        // ==========================================
+        // GAMBAR 4 & 5: MISI 2 (PREMIS & SOALAN)
+        // ==========================================
+        const premisList = [
+            { id: 1, title: "Sampah Bersepah", isProblem: true, img: "premis_sampah.png" },
+            { id: 2, title: "Cuci Tangan", isProblem: false, img: "premis_singki.png" },
+            { id: 3, title: "Makanan Terdedah", isProblem: true, img: "premis_makanan.png" },
+            { id: 4, title: "Makanan Ditutup", isProblem: false, img: "premis_tutup.png" },
+            { id: 5, title: "Tangan Kotor", isProblem: true, img: "premis_tangankotor.png" }
+        ];
+
+        function startMisi2() {
+            const main = document.getElementById('app-content');
+            main.innerHTML = `
+                <div class="w-full h-full flex flex-col justify-between items-center">
+                    <div class="flex items-center space-x-2">
+                        <span class="bg-yellow-400 text-blue-950 px-3 py-0.5 rounded-full text-xs font-black border-2 border-white">MISI 2: DETEKTIF KANTIN</span>
+                        <span class="bg-blue-900 text-yellow-300 px-2 py-0.5 rounded-full text-xs font-black border border-yellow-300">Masalah: ${state.m2Found.length}/3</span>
+                    </div>
+
+                    <!-- PREMIS KANTIN (5 GAMBAR LANDSCAPE) -->
+                    <div class="grid grid-cols-5 gap-2 w-full my-auto">
+                        ${premisList.map(p => `
+                            <button onclick="inspectPremis(${p.id}, '${p.title}',${p.isProblem})" class="bg-white hover:bg-yellow-200 p-1.5 rounded-2xl border-4 border-blue-300 transition flex flex-col items-center shadow btn-game">
+                                <div class="w-full h-16 sm:h-20 rounded-xl overflow-hidden mb-1 border border-slate-200">
+                                    <img src="${p.img}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/100/f59e0b/ffffff?text=${p.title}'">
+                                </div>
+                                <span class="text-[10px] sm:text-xs font-black text-blue-950 truncate w-full text-center">${p.title}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function inspectPremis(id, title, isProblem) {
+            if(!isProblem) {
+                alert("Ini situasi yang BETUL dan sihat! Sila cari situasi yang SALAH.");
+                return;
+            }
+
+            if(!state.m2Found.includes(id)) state.m2Found.push(id);
+
+            const main = document.getElementById('app-content');
+            main.innerHTML = `
+                <div class="w-full h-full bg-white/95 rounded-2xl border-4 border-amber-400 p-2 sm:p-3 shadow-2xl flex flex-col justify-between items-center text-center">
+                    <div class="flex items-center space-x-2 border-b-2 border-slate-200 pb-1 w-full justify-center">
+                        <div class="w-10 h-10 rounded-lg overflow-hidden border border-slate-300 shrink-0">
+                            <img src="premis_${id}.png" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/80?text=Isu+${id}'">
+                        </div>
+                        <h3 class="font-game text-sm sm:text-base text-red-600">🔍 KES DITEMUI: ${title.toUpperCase()}</h3>
+                    </div>
+                    
+                    <div class="bg-blue-50 p-2 rounded-xl text-left text-xs font-bold space-y-1 text-slate-800 border-2 border-blue-200 w-full my-1">
+                        <p class="text-blue-900 font-black">🗣️ TUGASAN LISAN MURID (TAHUN 4):</p>
+                        <p>1. Nyatakan masalah kebersihan yang anda lihat dalam gambar ini.</p>
+                        <p>2. Apakah kesan buruk jika situasi ini dibiarkan begitu sahaja?</p>
+                        <p>3. Berikan CADANGAN PENAMBAHBAIKAN dengan bahasa yang sopan.</p>
+                    </div>
+
+                    <div class="flex space-x-2 w-full">
+                        <button onclick="alert('Contoh Jawapan:\n- Masalah: Situasi tidak bersih.\n- Kesan: Menarik lalat dan kuman.\n- Cadangan: Sentiasa menjaga kebersihan.')" class="w-1/2 bg-amber-500 hover:bg-amber-400 text-white font-game py-1.5 rounded-xl text-xs btn-game border-2 border-white">
+                            📋 Contoh Jawapan
+                        </button>
+                        <button onclick="finishPremisInspection()" class="w-1/2 bg-emerald-500 hover:bg-emerald-400 text-white font-game py-1.5 rounded-xl text-xs btn-game border-2 border-white">
+                            Selesai & Teruskan 👍
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function finishPremisInspection() {
+            if(state.m2Found.length >= 3) {
+                state.m2Completed = true;
+                updateProgress(66);
+                confetti();
+                showMenu();
+            } else {
+                startMisi2();
+            }
+        }
+
+        // ==========================================
+        // GAMBAR 6 & 7: MISI 3 (RODA & AUDIO)
+        // ==========================================
+        function startMisi3() {
+            const main = document.getElementById('app-content');
+            main.innerHTML = `
+                <div class="w-full h-full flex flex-col justify-between items-center">
+                    <span class="bg-yellow-400 text-blue-950 px-3 py-0.5 rounded-full text-xs font-black border-2 border-white">MISI 3: RODA CABARAN</span>
+
+                    <!-- RODA DIPERBESARKAN SEIKUT SKRIN -->
+                    <div class="relative w-36 h-36 sm:w-44 sm:h-44 my-auto flex items-center justify-center">
+                        <div id="wheel" class="spin-wheel w-full h-full rounded-full border-8 border-yellow-300 bg-gradient-to-tr from-pink-500 via-purple-500 to-yellow-400 shadow-2xl flex items-center justify-center">
+                            <span class="text-4xl sm:text-5xl">🎡</span>
+                        </div>
+                        <div class="absolute -top-3 text-2xl filter drop-shadow">👇</div>
+                    </div>
+
+                    <button onclick="spinWheel()" class="bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-game py-1.5 px-6 rounded-xl text-sm sm:text-base btn-game border-2 border-white shadow">
+                        🎲 PUTAR RODA!
+                    </button>
+                </div>
+            `;
+        }
+
+        function spinWheel() {
+            playSfx('sfx-wheel');
+            const wheel = document.getElementById('wheel');
+            const deg = Math.floor(2000 + Math.random() * 2000);
+            wheel.style.transform = `rotate(${deg}deg)`;
+
+            setTimeout(() => {
+                showMisi3Dialog();
+            }, 3200);
+        }
+
+        function showMisi3Dialog() {
+            const main = document.getElementById('app-content');
+            main.innerHTML = `
+                <div class="w-full h-full bg-white/95 rounded-2xl border-4 border-purple-400 p-2 sm:p-3 shadow-2xl flex flex-col justify-between items-center">
+                    <div class="flex items-center space-x-2 border-b-2 border-purple-200 pb-1 w-full justify-center">
+                        <div class="w-10 h-10 rounded-lg overflow-hidden border border-slate-300 shrink-0">
+                            <img src="misi3_situasi.png" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/80?text=Situasi'">
+                        </div>
+                        <button onclick="playMisi3Audio('audio_misi3.mp3')" class="bg-purple-600 hover:bg-purple-500 text-white font-game px-3 py-1 rounded-xl text-xs btn-game border-2 border-white flex items-center space-x-1">
+                            <span>🔊</span> <span>Dengar Situasi (Audio)</span>
+                        </button>
+                    </div>
+
+                    <!-- 3 TAHAP CABARAN DENGAN JAWAPAN LAIN-LAIN -->
+                    <div class="grid grid-cols-3 gap-2 w-full my-1">
+                        <div class="bg-blue-50 p-2 rounded-xl border-2 border-blue-200 text-left">
+                            <span class="text-blue-700 font-black text-[11px] block">TAHAP 1 (Menaakul):</span>
+                            <p class="text-slate-800 text-[10px] font-bold leading-tight">Mengapakah tindakan rakan tersebut tidak mematuhi etika kebersihan kantin?</p>
+                        </div>
+                        <div class="bg-emerald-50 p-2 rounded-xl border-2 border-emerald-200 text-left">
+                            <span class="text-emerald-700 font-black text-[11px] block">TAHAP 2 (Teguran):</span>
+                            <p class="text-slate-800 text-[10px] font-bold leading-tight">Bina ayat teguran yang bersopan santun untuk menasihati rakan tersebut.</p>
+                        </div>
+                        <div class="bg-purple-50 p-2 rounded-xl border-2 border-purple-200 text-left">
+                            <span class="text-purple-700 font-black text-[11px] block">TAHAP 3 (Simulasi):</span>
+                            <p class="text-slate-800 text-[10px] font-bold leading-tight">Lakokan watak Pengawas Kantin yang memberikan arahan pembersihan secara tegas & berhemah.</p>
+                        </div>
+                    </div>
+
+                    <button onclick="finishMisi3()" class="bg-emerald-500 hover:bg-emerald-400 text-white font-game py-1.5 px-6 rounded-xl text-xs sm:text-sm btn-game border-2 border-white">
+                        SELESAI MISI 3 🎉
+                    </button>
+                </div>
+            `;
+        }
+
+        function playMisi3Audio(src) {
+            const a = document.getElementById('misi3-audio');
+            a.src = src;
+            a.play().catch(()=> alert("Sila pastikan fail " + src + " dimasukkan."));
+        }
+
+        function finishMisi3() {
+            state.m3Completed = true;
+            updateProgress(100);
+            showTamatGame();
+        }
+
+        // ==========================================
+        // GAMBAR 8: TAMAT GAME (VIDEO/GIF & CHEER)
+        // ==========================================
+        function showTamatGame() {
+            playSfx('sfx-cheer');
+            confetti({ particleCount: 200, spread: 100 });
+            const main = document.getElementById('app-content');
+            main.innerHTML = `
+                <div class="w-full h-full flex flex-col justify-between items-center text-center">
+                    <!-- RUANG VIDEO / GIF MISI SELESAI -->
+                    <div class="w-full h-32 sm:h-36 bg-black rounded-xl overflow-hidden border-4 border-yellow-300 shadow-xl flex items-center justify-center">
+                        <img src="misi_selesai.gif" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/600x200/10b981/ffffff?text=TAHNIAH!+MISI+SELESAI'">
+                    </div>
+
+                    <h2 class="font-game text-lg sm:text-2xl text-yellow-300 drop-shadow">TAHNIAH, EJEN KANTIN SIHAT!</h2>
+                    <p class="text-xs text-white font-black opacity-90">Kantin sekolah kini bersih, selamat, dan sihat!</p>
+
+                    <div class="flex space-x-3">
+                        <button onclick="location.reload()" class="bg-blue-500 hover:bg-blue-400 text-white font-game px-4 py-1.5 rounded-xl text-xs btn-game border-2 border-white">
+                            🔄 MAIN SEMULA
+                        </button>
+                        <button onclick="showMenu()" class="bg-emerald-500 hover:bg-emerald-400 text-white font-game px-4 py-1.5 rounded-xl text-xs btn-game border-2 border-white">
+                            🏠 MENU UTAMA
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.onload = showMenu;
+    </script>
+</body>
+</html>
